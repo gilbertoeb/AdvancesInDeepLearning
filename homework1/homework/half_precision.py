@@ -29,11 +29,8 @@ class HalfLinear(torch.nn.Linear):
         # Hint: Use the .to method to cast a tensor to a different dtype (i.e. torch.float16 or x.dtype)
         # The input and output should be of x.dtype = torch.float32
         # TODO: Implement me
-        # Convert input to float16 for computation
         x_half = x.to(torch.float16)
-        # Perform the linear transformation in float16
         output_half = torch.nn.functional.linear(x_half, self.weight, self.bias)
-        # Convert the output back to float32
         return output_half.to(torch.float32)
 
 

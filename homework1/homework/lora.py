@@ -30,14 +30,11 @@ class LoRALinear(HalfLinear):
         if self.bias is not None:
             self.bias.requires_grad = False
 
-        # Initialize LoRA layers
+        # Keep the LoRA layers in float32
         self.lora_a = torch.nn.Linear(in_features, lora_dim, bias=False).float()
         self.lora_b = torch.nn.Linear(lora_dim, out_features, bias=False).float()
-
-        # Initialize LoRA weights with small random values
         torch.nn.init.normal_(self.lora_a.weight, std=0.01)
         torch.nn.init.zeros_(self.lora_b.weight)
-        # Keep the LoRA layers in float32
         # raise NotImplementedError()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -47,11 +44,8 @@ class LoRALinear(HalfLinear):
 
         # Compute LoRA contribution in float32
         lora_output = self.lora_b(self.lora_a(x.to(torch.float32)))
-
-        # Combine outputs
         return output_half + lora_output
-
-    # raise NotImplementedError()
+        # raise NotImplementedError()
 
 
 class LoraBigNet(torch.nn.Module):
