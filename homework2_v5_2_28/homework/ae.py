@@ -99,47 +99,43 @@ class PatchAutoEncoder(torch.nn.Module, PatchAutoEncoderBase):
 
     Hint: Convolutions work well enough, no need to use a transformer unless you really want.
     Hint: See PatchifyLinear and UnpatchifyLinear for how to use convolutions with the input and
-          output dimensions given.
+            output dimensions given.
     Hint: You can get away with 3 layers or less.
     Hint: Many architectures work here (even a just PatchifyLinear / UnpatchifyLinear).
-          However, later parts of the assignment require both non-linearities (i.e. GeLU) and
-          interactions (i.e. convolutions) between patches.
+            However, later parts of the assignment require both non-linearities (i.e. GeLU) and
+            interactions (i.e. convolutions) between patches.
     """
 
     class PatchEncoder(torch.nn.Module):
         """
         (Optionally) Use this class to implement an encoder.
-                     It can make later parts of the homework easier (reusable components).
+                                    It can make later parts of the homework easier (reusable components).
         """
 
         def __init__(self, patch_size: int, latent_dim: int, bottleneck: int):
             super().__init__()
             self.patchify = PatchifyLinear(patch_size, latent_dim)
-            self.conv1 = torch.nn.Conv2d(latent_dim, bottleneck, kernel_size=3, stride=1, padding=1)
-            self.conv2 = torch.nn.Conv2d(bottleneck, bottleneck, kernel_size=3, stride=1, padding=1)
-            self.activation = torch.nn.ReLU()
+            self.conv1 = torch.nn.Conv2d(latent_dim, bottleneck, kernel_size=3, padding=1)
+            self.gelu = torch.nn.GELU()
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             x = self.patchify(x)
-            x = hwc_to_chw(x)
-            x = self.activation(self.conv1(x))
-            x = self.activation(self.conv2(x))
-            return chw_to_hwc(x)
+            x = chw_to_hwc(self.conv1(hwc_to_chw(x)))
+            x = self.gelu(x)
+            return x
 
     class PatchDecoder(torch.nn.Module):
         def __init__(self, patch_size: int, latent_dim: int, bottleneck: int):
             super().__init__()
-            self.conv1 = torch.nn.Conv2d(bottleneck, bottleneck, kernel_size=3, stride=1, padding=1)
-            self.conv2 = torch.nn.Conv2d(bottleneck, latent_dim, kernel_size=3, stride=1, padding=1)
+            self.conv1 = torch.nn.Conv2d(bottleneck, latent_dim, kernel_size=3, padding=1)
+            self.gelu = torch.nn.GELU()
             self.unpatchify = UnpatchifyLinear(patch_size, latent_dim)
-            self.activation = torch.nn.ReLU()
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
-            x = hwc_to_chw(x)
-            x = self.activation(self.conv1(x))
-            x = self.activation(self.conv2(x))
-            x = chw_to_hwc(x)
-            return self.unpatchify(x)
+            x = chw_to_hwc(self.conv1(hwc_to_chw(x)))
+            x = self.gelu(x)
+            x = self.unpatchify(x)
+            return x
 
     def __init__(self, patch_size: int = 25, latent_dim: int = 128, bottleneck: int = 128):
         super().__init__()
@@ -152,8 +148,8 @@ class PatchAutoEncoder(torch.nn.Module, PatchAutoEncoderBase):
         minimize (or even just visualize).
         You can return an empty dictionary if you don't have any additional terms.
         """
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
+        encoded = self.encode(x)
+        decoded = self.decode(encoded)
         return decoded, {}
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
