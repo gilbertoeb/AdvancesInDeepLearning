@@ -39,7 +39,7 @@ Batching will make much better use of your GPU and likely work 10-20x faster tha
 The core structure of batched generation is very similar to regular generation, with one exception: All sequences that go into the transformer need to be of the same length.
 This is achieved through padding the shorter sequences in the left (aligning all sequences on the right, where generation starts).
 The transformers library will take care of padding in the `self.tokenizer` call, simply pass in a `list[str]` of prompts and use `padding=True` and return a PyTorch tensor `return_tensors="pt"`.
-Generation if almost the same between unbatched and batched versions with the only difference being that `self.model.generate` take both `input_ids` (the tokenized input) and `attention_mask` as input.
+Generation is almost the same between unbatched and batched versions with the only difference being that `self.model.generate` take both `input_ids` (the tokenized input) and `attention_mask` as input.
 `attention_mask` is produced by the tokenizer indicating which inputs have been padded.
 Finally, the `self.tokenizer` should decode the generated output using `batch_decode`.
 This will produce a flat `list[str]` of generations of length `num_return_sequences * len(prompts)`.

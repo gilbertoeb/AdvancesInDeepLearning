@@ -12,7 +12,9 @@ class BaseLLM:
     def __init__(self, checkpoint=checkpoint):
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
         self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
+        # self.model = AutoModelForCausalLM.from_pretrained(checkpoint, device_map="auto", torch_dtype=torch.bfloat16)
         self.device = device
+        self.tokenizer.padding_side = "left"  # Set padding side for correct generation
 
     def format_prompt(self, question: str) -> str:
         """
@@ -31,7 +33,8 @@ class BaseLLM:
         except (IndexError, ValueError):
             return float("nan")
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, max_new_tokens: int = 100, temperature: float = 0) -> str:
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         """
         (Optional) Implement this method first and then implement batched_generate below.
         It is much easier to implement generation without batching.
@@ -42,7 +45,20 @@ class BaseLLM:
         - decode the outputs with self.tokenizer.decode
 
         """
-        return self.batched_generate([prompt])[0]
+        # inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        # outputs = self.model.generate(**inputs)
+        # answer = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # return answer
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        generation_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "eos_token_id": self.tokenizer.eos_token_id,
+            "do_sample": temperature > 0,
+            "temperature": temperature,
+        }
+        outputs = self.model.generate(**inputs, **generation_kwargs)
+        answer = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return answer
 
     @overload
     def batched_generate(
@@ -96,15 +112,44 @@ class BaseLLM:
         # If you run out of memory, try to reduce the micro_batch_size.
         micro_batch_size = 32
         if len(prompts) > micro_batch_size:
-            return [
-                r
-                for idx in tqdm(
-                    range(0, len(prompts), micro_batch_size), desc=f"LLM Running on Micro Batches {micro_batch_size}"
-                )
-                for r in self.batched_generate(prompts[idx : idx + micro_batch_size], num_return_sequences, temperature)
-            ]
+            results = []
+            for idx in tqdm(
+                range(0, len(prompts), micro_batch_size), desc=f"LLM Running on Micro Batches {micro_batch_size}"
+            ):
+                batch_prompts = prompts[idx : idx + micro_batch_size]
+                results.extend(self._batched_generate_internal(batch_prompts, num_return_sequences, temperature))
+            return results
 
-        raise NotImplementedError()
+        return self._batched_generate_internal(prompts, num_return_sequences, temperature)
+
+    def _batched_generate_internal(
+        self, prompts: list[str], num_return_sequences: int | None = None, temperature: float = 0
+    ) -> list[str] | list[list[str]]:
+        inputs = self.tokenizer(prompts, padding=True, return_tensors="pt").to(self.device)
+
+        generation_kwargs = {
+            "max_new_tokens": 100,  # Increased max_new_tokens
+            "eos_token_id": self.tokenizer.eos_token_id,
+            "do_sample": temperature > 0,
+            "temperature": temperature,
+        }
+        if num_return_sequences is not None:
+            generation_kwargs["num_return_sequences"] = num_return_sequences
+
+        outputs = self.model.generate(**inputs, **generation_kwargs)
+
+        # Only decode the generated tokens (after the input)
+        generated_tokens = outputs[:, inputs["input_ids"].shape[1] :]
+        decoded_outputs = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+
+        if num_return_sequences is None:
+            return decoded_outputs
+        else:
+            # Reshape the flat list into a list of lists
+            return [
+                decoded_outputs[i * num_return_sequences : (i + 1) * num_return_sequences]
+                for i in range(len(prompts))
+            ]
 
     def answer(self, *questions) -> list[float]:
         """

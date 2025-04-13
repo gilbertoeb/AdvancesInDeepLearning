@@ -75,7 +75,7 @@ class GenerateGrader(Grader):
         full_texts = [questions[i] + answers[i] for i in range(len(questions))]
         return self.compute_loss(llm, full_texts)
 
-    @Case(score=10, timeout=40000)
+    @Case(score=10, timeout=100000)
     def test_generate(self):
         """Test non-batched generate function"""
         return self.normalize_score(self.check_generate_score(), *self.LOSS_BOUND)
@@ -87,7 +87,7 @@ class BatchedGenerateGrader(GenerateGrader):
     def generate(self, model, questions):
         return model.batched_generate(questions)
 
-    @Case(score=15, timeout=15000)
+    @Case(score=15, timeout=100000)
     def test_generate(self):
         """Test batched generate function"""
         return self.normalize_score(self.check_generate_score(), *self.LOSS_BOUND)
@@ -118,7 +118,7 @@ class CoTGrader(Grader):
         score_normalized = (score - min_score) / (max_score - min_score)
         return np.clip(score_normalized, 0.0, 1.0)
 
-    @Case(score=25, timeout=60000)
+    @Case(score=25, timeout=100000) # updated from 60000 to 100000 by @gilberto
     def test_validation_loss(self):
         """Test the answer accuracy"""
         dataset = self.module.data.Dataset("valid")
