@@ -6,7 +6,7 @@ from peft import get_peft_model, LoraConfig, PeftModel
 from transformers import TrainingArguments, Trainer
 import torch
 
-
+# Github Copilot was used to help with the code completion.
 def load() -> BaseLLM:
     from pathlib import Path
     from peft import PeftModel
@@ -168,7 +168,7 @@ def test_model(ckpt_path: str):
         llm.model = PeftModel.from_pretrained(llm.model, ckpt_path).to(llm.device)
         llm.model.eval()
         benchmark_result = benchmark(llm, testset, 100)
-        print(f"{benchmark_result.accuracy=}  {benchmark_result.answer_rate=}")
+        print(f"(SFT) {benchmark_result.accuracy=}  {benchmark_result.answer_rate=}")
     except Exception as e:
         print(f"Error loading LoRA adapter for testing: {e}")
 

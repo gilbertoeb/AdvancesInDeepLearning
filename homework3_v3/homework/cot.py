@@ -1,6 +1,6 @@
 from .base_llm import BaseLLM
 
-
+# Github Copilot was used to help with the code completion.
 class CoTModel(BaseLLM):
     def format_prompt(self, question: str) -> str:
         messages = [
