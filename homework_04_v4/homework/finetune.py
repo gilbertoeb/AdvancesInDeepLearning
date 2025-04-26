@@ -1,3 +1,8 @@
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
+warnings.filterwarnings("ignore", category=UserWarning, module="torch.utils.data")
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from pathlib import Path
 
 import torch
