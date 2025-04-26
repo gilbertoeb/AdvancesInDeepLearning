@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageDraw
 
+# Updating file
+
 # Define object type mapping
 OBJECT_TYPES = {
     1: "Kart",
